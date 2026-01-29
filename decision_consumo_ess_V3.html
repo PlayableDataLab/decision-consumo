@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Decisión de consumo (ESS) — versión rápida</title>
+  <meta name="color-scheme" content="light" />
+
+  <!-- PDF deps (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root{
+      --bg:#ffffff;
+      --text:#000000;
+      --muted:rgba(0,0,0,.65);
+      --muted2:rgba(0,0,0,.55);
+      --ring:rgba(0,0,0,.10);
+      --ring2:rgba(0,0,0,.08);
+      --soft:rgba(0,0,0,.04);
+      --soft2:rgba(0,0,0,.02);
+      --sky:#0ea5e9;
+      --emerald:#10b981;
+      --amber:#f59e0b;
+      --rose:#f43f5e;
+      --shadow:0 6px 20px rgba(0,0,0,.10);
+      --r:24px;
+      --r2:18px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font)}
+    .container{max-width:1100px;margin:0 auto;padding:28px 16px 60px}
+
+    /* Header */
+    .topbar{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}
+    .chip{display:inline-flex;align-items:center;gap:8px;border-radius:999px;background:var(--soft);padding:6px 12px;font-size:12px;font-weight:800;color:rgba(0,0,0,.80);box-shadow:inset 0 0 0 1px var(--ring2)}
+    .dot{width:6px;height:6px;border-radius:999px;background:var(--emerald)}
+    h1{margin:12px 0 0;font-size:34px;line-height:1.1;letter-spacing:-.02em}
+    .sub{margin:10px 0 0;max-width:720px;color:var(--muted);font-size:14px;line-height:1.6}
+
+    .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    button{
+      border:0;background:var(--soft);color:var(--text);
+      border-radius:16px;padding:10px 14px;font-weight:900;font-size:14px;cursor:pointer;
+      box-shadow:inset 0 0 0 1px var(--ring);
+      transition:transform .12s ease, background .12s ease;
+    }
+    button:hover{background:rgba(0,0,0,.08)}
+    button.primary{background:#000;color:#fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.20), var(--shadow)}
+    button.primary:hover{transform:translateY(-2px)}
+    button.ghost{background:rgba(0,0,0,.03)}
+
+    /* Layout */
+    .grid{display:grid;gap:18px;margin-top:26px}
+    @media(min-width:1024px){ .grid{grid-template-columns: 7fr 5fr;} }
+
+    .card{background:#fff;border-radius:28px;padding:18px;box-shadow:inset 0 0 0 1px var(--ring)}
+    .row{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+
+    /* Input */
+    .input{
+      width:100%;border-radius:18px;padding:12px 14px;
+      border:0;outline:none;background:#fff;color:#000;
+      box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);
+      font-size:14px;
+    }
+    .input::placeholder{color:rgba(0,0,0,.40)}
+
+    /* Section headers */
+    .section-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-top:18px}
+    .section-title{font-size:16px;font-weight:950}
+    .section-sub{margin-top:6px;font-size:14px;color:var(--muted)}
+    .small{font-size:12px;font-weight:900;color:rgba(0,0,0,.60)}
+    .pill{border-radius:16px;background:var(--soft);padding:6px 10px;font-weight:950;box-shadow:inset 0 0 0 1px var(--ring2)}
+
+    /* Factor */
+    .factor{border-radius:18px;background:#fff;padding:14px;box-shadow:inset 0 0 0 1px var(--ring)}
+    .factor-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+    .label{font-size:14px;font-weight:950}
+    .help{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:rgba(0,0,0,.05);box-shadow:inset 0 0 0 1px rgba(0,0,0,.10);color:rgba(0,0,0,.70);font-weight:950;cursor:help;position:relative;flex:0 0 auto}
+    .help:hover .tip{opacity:1;transform:translate(-50%,0)}
+    .tip{opacity:0;pointer-events:none;position:absolute;left:50%;top:120%;transform:translate(-50%,6px);width:min(320px,75vw);background:rgba(24,24,27,.95);color:#f4f4f5;border-radius:14px;padding:10px;font-size:12px;line-height:1.45;box-shadow:0 18px 50px rgba(0,0,0,.25);transition:opacity .12s ease, transform .12s ease;z-index:50}
+    .meta{margin-top:6px;font-size:12px;color:rgba(0,0,0,.60)}
+    .scorebox{border-radius:14px;background:rgba(0,0,0,.04);padding:7px 10px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);display:flex;gap:6px;align-items:baseline;min-width:78px;justify-content:flex-end}
+    .scorebox b{font-size:18px;font-weight:950}
+    .scorebox span{font-size:12px;color:rgba(0,0,0,.60)}
+
+    .slider-row{display:flex;gap:10px;align-items:center;margin-top:10px}
+    input[type=range]{width:100%;accent-color:#000}
+    .pct{width:48px;text-align:right;font-size:12px;color:rgba(0,0,0,.60);font-variant-numeric:tabular-nums;flex:0 0 auto}
+    .guide{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;font-weight:900;color:rgba(0,0,0,.55)}
+
+    /* Right column */
+    .sticky{display:flex;flex-direction:column;gap:18px;position:static}
+    @media(min-width:1024px){
+      .sticky{position:sticky;top:18px}
+    }
+
+    .result-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+    .name{margin-top:4px;font-size:22px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .progress-pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950}
+    .progress-pill .dot2{width:6px;height:6px;border-radius:999px;background:currentColor;opacity:.8}
+
+    .totalbox{border-radius:18px;background:rgba(0,0,0,.04);padding:10px 14px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);text-align:center}
+    .totalbox .t{font-size:12px;font-weight:950;color:rgba(0,0,0,.60)}
+    .totalbox .n{font-size:34px;font-weight:950;line-height:1.1;font-variant-numeric:tabular-nums}
+
+    .subcards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+    .subcard{border-radius:18px;background:rgba(0,0,0,.03);padding:12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+    .bar{margin-top:10px;height:8px;border-radius:999px;background:rgba(0,0,0,.08);overflow:hidden}
+    .fill{height:8px;border-radius:999px;opacity:.85}
+
+    .advice{border-radius:18px;background:rgba(245,158,11,.10);box-shadow:inset 0 0 0 1px rgba(245,158,11,.20);padding:14px}
+    .advice h4{margin:0;font-size:14px;font-weight:950;color:#92400e}
+    .advice ul{margin:8px 0 0;padding-left:18px;color:rgba(146,64,14,.82);font-size:14px}
+
+    /* Radar */
+    .radarWrap{margin-top:14px;height:340px;min-width:0}
+    .radarCard{border-radius:18px;background:rgba(0,0,0,.02);padding:14px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+    .detailList{margin-top:12px;display:grid;gap:8px}
+    .drow{display:flex;gap:10px;align-items:center;min-width:0}
+    .dlabel{width:210px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:rgba(0,0,0,.75)}
+    .dnum{width:78px;text-align:right;font-size:12px;font-weight:950;color:rgba(0,0,0,.80);font-variant-numeric:tabular-nums;flex:0 0 auto}
+
+    /* History */
+    .historyItem{display:flex;justify-content:space-between;gap:10px;align-items:center;border-radius:18px;background:rgba(0,0,0,.02);padding:12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+    .hname{font-weight:950;font-size:14px;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .hmeta{margin-top:4px;font-size:12px;color:rgba(0,0,0,.65);display:flex;gap:8px;flex-wrap:wrap}
+    .hbtn{border-radius:12px;padding:7px 10px;font-size:12px}
+
+    /* Compare */
+    .compare{margin-top:18px}
+    .compareGrid{display:grid;gap:18px}
+    @media(min-width:1024px){ .compareGrid{grid-template-columns:1fr 1fr;} }
+    select{border:0;outline:none;background:#fff;color:#000;border-radius:16px;padding:10px 12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);font-weight:900}
+
+    /* Footer */
+    footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--ring)}
+    .footGrid{display:grid;gap:10px}
+    @media(min-width:768px){ .footGrid{grid-template-columns:1fr 1fr 1fr;} }
+    .footCard{border-radius:18px;background:#fff;padding:14px;box-shadow:inset 0 0 0 1px var(--ring)}
+    .footCard h4{margin:0;font-size:14px;font-weight:950}
+    .footCard p,.footCard li{color:rgba(0,0,0,.70);font-size:14px;line-height:1.5}
+    .footCard ol{margin:8px 0 0;padding-left:18px}
+
+    .center{margin-top:18px;text-align:center;font-size:12px;color:rgba(0,0,0,.45)}
+
+    /* Print */
+    @media print{
+      .actions{display:none !important}
+      .sticky{position:static}
+      #compareCard{display:none !important}
+    }
+
+    /* Mobile responsiveness (does NOT affect desktop) */
+    @media (max-width: 640px){
+      .container{padding:20px 12px 50px}
+      h1{font-size:26px}
+      .sub{font-size:13px}
+      .card{padding:14px}
+      .actions{width:100%;justify-content:flex-start}
+      .actions button{flex:1 1 160px}
+      .totalbox .n{font-size:28px}
+      .subcards{grid-template-columns:1fr}
+      .dlabel{width:130px;max-width:130px}
+      .radarWrap{height:300px}
+      select{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div>
+        <div class="chip"><span class="dot"></span>Formulario de decisión de consumo (ESS) — versión rápida</div>
+        <h1>Decide mejor, con datos y con impacto</h1>
+        <p class="sub">Puntúa factores directos (0–10) y de impacto ESS (0–5). La app suma automáticamente, te da una roseta de perfil y genera un informe descargable.</p>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btnPdf">Descargar PDF</button>
+        <button id="btnCopy">Copiar resumen</button>
+        <button id="btnSave">Guardar proveedor</button>
+        <button id="btnCompare">Comparar proveedores</button>
+        <button class="ghost" id="btnReset">Reiniciar</button>
+      </div>
+    </div>
+
+    <!-- Report (capturable a PDF) -->
+    <div id="report">
+      <div class="grid">
+        <!-- LEFT -->
+        <div>
+          <div class="card">
+            <div class="row">
+              <div>
+                <h2 style="font-size:18px;font-weight:950;margin:0">Proveedor</h2>
+                <div style="margin-top:6px;color:var(--muted);font-size:14px">Escribe el nombre para asociar la evaluación a una entidad concreta.</div>
+              </div>
+              <div style="width:min(360px,100%)">
+                <input class="input" id="providerName" placeholder="Ej.: Cooperativa X, Tienda Y, SaaS Z..." />
+              </div>
+            </div>
+          </div>
+
+          <div class="section-head">
+            <div>
+              <div class="section-title">A) Factores directos e instantáneos</div>
+              <div class="section-sub">Puntúa 0–10 · Máximo 70</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="small">Subtotal</span>
+              <span class="pill" id="directSubtotal">0/70</span>
+            </div>
+          </div>
+          <div id="directFactors" style="margin-top:12px;display:grid;gap:10px"></div>
+
+          <div class="section-head" style="margin-top:22px">
+            <div>
+              <div class="section-title">B) Impacto estratégico — Principios ESS</div>
+              <div class="section-sub">Puntúa 0–5 · Máximo 30</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="small">Subtotal</span>
+              <span class="pill" id="impactSubtotal">0/30</span>
+            </div>
+          </div>
+          <div id="impactFactors" style="margin-top:12px;display:grid;gap:10px"></div>
+        </div>
+
+        <!-- RIGHT -->
+        <div>
+          <div class="sticky">
+            <div class="card" id="resultCard"></div>
+            <div class="card" id="tipsCard" style="display:none"></div>
+            <div class="card" id="vizCard"></div>
+            <div class="card" id="historyCard"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compare section (inline, toggled) -->
+      <div class="card compare" id="compareCard" style="display:none"></div>
+
+      <footer>
+        <div class="footGrid">
+          <div class="footCard">
+            <h4>Cómo usar (2 pasos)</h4>
+            <ol>
+              <li>Puntúa cada factor (Directos 0–10, Impacto 0–5).</li>
+              <li>Compara totales entre proveedores y elige.</li>
+            </ol>
+          </div>
+          <div class="footCard">
+            <h4>Regla práctica</h4>
+            <p>Si dos opciones están cerca, elige la que tenga mayor Impacto ESS: suele dar estabilidad y retorno local a medio plazo.</p>
+          </div>
+          <div class="footCard">
+            <h4>Privacidad</h4>
+            <p>Esta demo funciona en tu navegador. No envía datos a servidores. El historial se guarda localmente.</p>
+          </div>
+        </div>
+        <div class="center">Hecho para evaluar proveedores con criterios directos + principios ESS.</div>
+      </footer>
+    </div>
+  </div>
+
+<script>
+  // ---------- Data ----------
+  const DIRECT_MAX = 10;
+  const IMPACT_MAX = 5;
+  const COLORS = { sky: "#0ea5e9", emerald: "#10b981", amber: "#f59e0b", rose: "#f43f5e" };
+
+  const DIRECT_FACTORS = [
+    { key: "precio", label: "Precio total anual", max: DIRECT_MAX, group: "Directos", help: "Incluye IVA, comisiones, permanencias, envíos, mantenimiento. 10 si es competitivo y transparente; 5 si hay costes ocultos moderados; 0 si es caro y opaco." },
+    { key: "calidad", label: "Calidad", max: DIRECT_MAX, group: "Directos", help: "Prestaciones, durabilidad, garantías, materiales." },
+    { key: "soporte", label: "Atención y soporte", max: DIRECT_MAX, group: "Directos", help: "Tiempos de respuesta, canales, SLA, postventa." },
+    { key: "proximidad", label: "Proximidad", max: DIRECT_MAX, group: "Directos", help: "Sede/empleo/operación en tu territorio; km de logística." },
+    { key: "plazos", label: "Disponibilidad y plazos", max: DIRECT_MAX, group: "Directos", help: "Stock, instalación, portabilidad sin cortes, cronograma claro." },
+    { key: "usabilidad", label: "Usabilidad y accesibilidad", max: DIRECT_MAX, group: "Directos", help: "Facilidad de uso, lectura fácil, soporte inclusivo/idiomas/accesibilidad." },
+    { key: "riesgo", label: "Riesgo de cambio/salida", max: DIRECT_MAX, group: "Directos", help: "Penalizaciones, período de prueba, facilidad para irse si no encaja." },
+  ];
+
+  const IMPACT_FACTORS = [
+    { key: "equidad", label: "Equidad", max: IMPACT_MAX, group: "Impacto ESS", help: "Banda salarial acotada, igualdad, lenguaje inclusivo, datos públicos." },
+    { key: "trabajo", label: "Trabajo digno", max: IMPACT_MAX, group: "Impacto ESS", help: "Empleo estable, cotizaciones, PRL, conciliación." },
+    { key: "eco", label: "Sostenibilidad ecológica", max: IMPACT_MAX, group: "Impacto ESS", help: "Origen responsable/renovable, huella, residuos, reparabilidad." },
+    { key: "demo", label: "Cooperación y democracia", max: IMPACT_MAX, group: "Impacto ESS", help: "Gobernanza participativa (coop/AS), transparencia, intercooperación." },
+    { key: "riqueza", label: "Reparto justo de la riqueza", max: IMPACT_MAX, group: "Impacto ESS", help: "Reinversión en proyecto/territorio, no reparto especulativo." },
+    { key: "entorno", label: "Compromiso con el entorno", max: IMPACT_MAX, group: "Impacto ESS", help: "% compras a ESS/local, apoyo comunitario, educación/cultura." },
+  ];
+
+  const ALL_FACTORS = [...DIRECT_FACTORS, ...IMPACT_FACTORS];
+
+  // ---------- State ----------
+  const state = {
+    providerName: "",
+    scores: Object.fromEntries(ALL_FACTORS.map(f => [f.key, 0])),
+    saved: loadSaved(),
+    compareOpen: false,
+    compareA: "",
+    compareB: "",
+  };
+
+  // ---------- Utils ----------
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  const fmt0 = (n) => (Number.isFinite(n) ? Math.round(n).toString() : "0");
+  const sanitizeFilename = (s) => (s || "proveedor").replace(/[^a-z0-9_-]/gi, "_");
+
+  function scoreLabel(total){
+    if (total >= 90) return { band: "Excelente", note: "Calidad + alto impacto." };
+    if (total >= 75) return { band: "Recomendable", note: "Buen equilibrio." };
+    if (total >= 60) return { band: "Aceptable", note: "Pide mejoras o compara alternativas ESS." };
+    return { band: "Débil", note: "Alto riesgo o bajo valor social/ambiental." };
+  }
+
+  function shortLabel(label){
+    const map = {
+      "Precio total anual":"Precio",
+      "Atención y soporte":"Soporte",
+      "Disponibilidad y plazos":"Plazos",
+      "Usabilidad y accesibilidad":"Usabilidad",
+      "Riesgo de cambio/salida":"Riesgo",
+      "Sostenibilidad ecológica":"Ecológica",
+      "Cooperación y democracia":"Democracia",
+      "Reparto justo de la riqueza":"Riqueza",
+      "Compromiso con el entorno":"Entorno",
+    };
+    return map[label] || label;
+  }
+
+  function computeModel(scores, name){
+    const directSubtotal = DIRECT_FACTORS.reduce((acc,f)=>acc+clamp(scores[f.key]||0,0,f.max),0);
+    const impactSubtotal = IMPACT_FACTORS.reduce((acc,f)=>acc+clamp(scores[f.key]||0,0,f.max),0);
+    const total = directSubtotal + impactSubtotal;
+    const band = scoreLabel(total);
+
+    const radarData = ALL_FACTORS.map(f=>{
+      const value = clamp(scores[f.key]||0,0,f.max);
+      const pct = (value/f.max)*100;
+      return { factor:f.label, short: shortLabel(f.label), value, max:f.max, pct, group:f.group };
+    });
+
+    return {
+      name: name || "Proveedor",
+      directSubtotal,
+      impactSubtotal,
+      total,
+      band,
+      radarData,
+      directPct: (directSubtotal/70)*100,
+      impactPct: (impactSubtotal/30)*100,
+    };
+  }
+
+  function pillStyle(total){
+    if (total >= 90) return { bg:"rgba(16,185,129,.16)", fg:"#065f46", ring:"rgba(16,185,129,.30)" };
+    if (total >= 75) return { bg:"rgba(14,165,233,.16)", fg:"#075985", ring:"rgba(14,165,233,.30)" };
+    if (total >= 60) return { bg:"rgba(245,158,11,.16)", fg:"#92400e", ring:"rgba(245,158,11,.30)" };
+    return { bg:"rgba(244,63,94,.16)", fg:"#9f1239", ring:"rgba(244,63,94,.30)" };
+  }
+
+  function buildShareText(model, scores){
+    const lines = [];
+    lines.push("Decisión de consumo (ESS) — " + model.name);
+    lines.push("");
+    lines.push("TOTAL: " + model.total + "/100");
+    lines.push("Directos: " + model.directSubtotal + "/70");
+    lines.push("Impacto ESS: " + model.impactSubtotal + "/30");
+    lines.push("");
+    lines.push("Interpretación: " + model.band.band + " — " + model.band.note);
+    lines.push("");
+    lines.push("Detalle por factor:");
+    ALL_FACTORS.forEach(f=>{
+      const v = clamp(scores[f.key]||0,0,f.max);
+      lines.push("- " + f.label + ": " + v + "/" + f.max);
+    });
+    return lines.join("\n");
+  }
+
+  function loadSaved(){
+    try{ return JSON.parse(localStorage.getItem("ess_reports_html_v1")||"[]") }catch{ return [] }
+  }
+  function persistSaved(){
+    try{ localStorage.setItem("ess_reports_html_v1", JSON.stringify(state.saved)) }catch{}
+  }
+
+  function escapeHtml(s){
+    return String(s||"")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/\"/g,"&quot;")
+      .replace(/'/g,"&#39;");
+  }
+
+  // ---------- UI (HTML generators) ----------
+  function resultHTML(model){
+    const st = pillStyle(model.total);
+    return `
+      <div class="result-head">
+        <div style="min-width:0">
+          <div class="small">Resultado</div>
+          <div class="name" title="${escapeHtml(model.name)}">${escapeHtml(model.name)}</div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="progress-pill" style="background:${st.bg};color:${st.fg};box-shadow:inset 0 0 0 1px ${st.ring}">
+              <span class="dot2"></span>${model.total}/100
+            </span>
+            <span style="font-weight:950;color:rgba(0,0,0,.80)">${escapeHtml(model.band.band)}</span>
+          </div>
+          <div style="margin-top:8px;color:var(--muted);font-size:14px">${escapeHtml(model.band.note)}</div>
+        </div>
+        <div class="totalbox">
+          <div class="t">TOTAL</div>
+          <div class="n">${model.total}</div>
+          <div class="t">/100</div>
+        </div>
+      </div>
+
+      <div class="subcards">
+        <div class="subcard">
+          <div class="small">Directos</div>
+          <div style="margin-top:6px;font-size:18px;font-weight:950;font-variant-numeric:tabular-nums">${model.directSubtotal}/70</div>
+          <div class="bar"><div class="fill" style="width:${clamp(model.directPct,0,100)}%;background:${COLORS.sky}"></div></div>
+        </div>
+        <div class="subcard">
+          <div class="small">Impacto ESS</div>
+          <div style="margin-top:6px;font-size:18px;font-weight:950;font-variant-numeric:tabular-nums">${model.impactSubtotal}/30</div>
+          <div class="bar"><div class="fill" style="width:${clamp(model.impactPct,0,100)}%;background:${COLORS.emerald}"></div></div>
+        </div>
+      </div>
+
+      <div class="radarCard" style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-weight:950">Interpretación orientativa</div>
+          <div class="small">Umbrales</div>
+        </div>
+        <div style="margin-top:10px;display:grid;gap:8px;color:rgba(0,0,0,.70);font-size:14px">
+          <div style="display:flex;justify-content:space-between"><span>90–100</span><span style="color:rgba(0,0,0,.85)">Excelente</span></div>
+          <div style="display:flex;justify-content:space-between"><span>75–89</span><span style="color:rgba(0,0,0,.85)">Recomendable</span></div>
+          <div style="display:flex;justify-content:space-between"><span>60–74</span><span style="color:rgba(0,0,0,.85)">Aceptable</span></div>
+          <div style="display:flex;justify-content:space-between"><span>&lt;60</span><span style="color:rgba(0,0,0,.85)">Débil</span></div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:rgba(0,0,0,.60)">Regla práctica: si dos opciones están cerca en puntos, elige la que tenga mayor impacto ESS.</div>
+      </div>
+    `;
+  }
+
+  function tipsHTML(model){
+    const tips = [];
+    if (model.impactSubtotal <= 10) tips.push("Impacto ESS bajo: busca evidencias públicas o alternativas de ESS/local.");
+    if (model.directSubtotal <= 40) tips.push("Directos flojos: revisa costes ocultos, garantías y facilidad de salida.");
+    if (Math.abs(model.directPct - model.impactPct) >= 40) tips.push("El equilibrio está descompensado: si comparas opciones cercanas, prioriza mayor Impacto ESS.");
+    if (!tips.length) return "";
+    return `
+      <div class="advice">
+        <h4>Sugerencias rápidas</h4>
+        <ul>${tips.map(t=>`<li>${escapeHtml(t)}</li>`).join("")}</ul>
+      </div>
+    `;
+  }
+
+  function vizHTML(model, scores, hostId){
+    const avg = model.radarData.reduce((a,r)=>a+r.pct,0)/model.radarData.length;
+    return `
+      <div style="display:flex;align-items:end;justify-content:space-between;gap:10px">
+        <div>
+          <div class="small">Visualización</div>
+          <h3 style="margin-top:6px;font-size:16px;font-weight:950">Roseta de factores</h3>
+          <div style="margin-top:6px;color:var(--muted);font-size:14px">Cada radio muestra el % de cumplimiento del factor (sobre su máximo).</div>
+        </div>
+        <div class="pill" style="font-size:12px">${fmt0(avg)}% medio</div>
+      </div>
+
+      <div class="radarWrap" id="${hostId}-radar"></div>
+
+      <div class="radarCard">
+        <div class="small">Detalle (puntuación / máximo)</div>
+        <div class="detailList">
+          ${ALL_FACTORS.map(f=>{
+            const v = clamp(scores[f.key]||0,0,f.max);
+            const pct = (v/f.max)*100;
+            const color = f.max===10 ? COLORS.sky : COLORS.emerald;
+            return `
+              <div class="drow">
+                <div class="dlabel" title="${escapeHtml(f.label)}">${escapeHtml(f.label)}</div>
+                <div style="flex:1;min-width:0">
+                  <div class="bar"><div class="fill" style="width:${clamp(pct,0,100)}%;background:${color}"></div></div>
+                </div>
+                <div class="dnum">${v}/${f.max}</div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  // ---------- Components ----------
+  function factorRow(f){
+    const wrap = document.createElement("div");
+    wrap.className = "factor";
+
+    const top = document.createElement("div");
+    top.className = "factor-top";
+
+    const left = document.createElement("div");
+    left.style.minWidth = "0";
+
+    const labelRow = document.createElement("div");
+    labelRow.style.display = "flex";
+    labelRow.style.alignItems = "center";
+    labelRow.style.gap = "8px";
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = f.label;
+
+    const hint = document.createElement("span");
+    hint.className = "help";
+    hint.textContent = "i";
+    const tip = document.createElement("span");
+    tip.className = "tip";
+    tip.textContent = f.help;
+    hint.appendChild(tip);
+
+    labelRow.appendChild(label);
+    labelRow.appendChild(hint);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = `Puntúa 0–${f.max}, siendo 0 la peor puntuación y ${f.max} la mejor.`;
+
+    left.appendChild(labelRow);
+    left.appendChild(meta);
+
+    const scorebox = document.createElement("div");
+    scorebox.className = "scorebox";
+    const b = document.createElement("b");
+    const s = document.createElement("span");
+    b.textContent = String(state.scores[f.key]||0);
+    s.textContent = `/${f.max}`;
+    scorebox.appendChild(b);
+    scorebox.appendChild(s);
+
+    top.appendChild(left);
+    top.appendChild(scorebox);
+
+    const sliderRow = document.createElement("div");
+    sliderRow.className = "slider-row";
+
+    const range = document.createElement("input");
+    range.type = "range";
+    range.min = "0";
+    range.max = String(f.max);
+    range.value = String(state.scores[f.key]||0);
+
+    const pct = document.createElement("div");
+    pct.className = "pct";
+
+    sliderRow.appendChild(range);
+    sliderRow.appendChild(pct);
+
+    const guide = document.createElement("div");
+    guide.className = "guide";
+    const mid = f.max === 10 ? 5 : 3;
+    guide.innerHTML = `<span>0</span><span>${mid}</span><span>${f.max}</span>`;
+
+    wrap.appendChild(top);
+    wrap.appendChild(sliderRow);
+    wrap.appendChild(guide);
+
+    const updateRow = () => {
+      const v = clamp(Number(range.value),0,f.max);
+      state.scores[f.key] = v;
+      b.textContent = String(v);
+      pct.textContent = fmt0((v/f.max)*100) + "%";
+      render();
+    };
+    range.addEventListener("input", updateRow);
+
+    // initial
+    pct.textContent = fmt0(((state.scores[f.key]||0)/f.max)*100) + "%";
+
+    return wrap;
+  }
+
+  function drawRadar(container, radarData){
+    container.innerHTML = "";
+    const w = container.clientWidth || 600;
+    const h = container.clientHeight || 340;
+    const size = Math.min(w,h);
+    const cx = w/2;
+    const cy = h/2;
+    const r = (size*0.38);
+    const n = radarData.length;
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("width", String(w));
+    svg.setAttribute("height", String(h));
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+
+    // Grid polygons
+    const levels = 5;
+    for(let l=1;l<=levels;l++){
+      const rr = r*(l/levels);
+      const pts = [];
+      for(let i=0;i<n;i++){
+        const ang = (-Math.PI/2) + (i*2*Math.PI/n);
+        pts.push([cx + rr*Math.cos(ang), cy + rr*Math.sin(ang)]);
+      }
+      const poly = document.createElementNS(svg.namespaceURI,"polygon");
+      poly.setAttribute("points", pts.map(p=>p[0].toFixed(2)+","+p[1].toFixed(2)).join(" "));
+      poly.setAttribute("fill","none");
+      poly.setAttribute("stroke","rgba(0,0,0,0.10)");
+      svg.appendChild(poly);
+    }
+
+    // Axes + labels
+    for(let i=0;i<n;i++){
+      const ang = (-Math.PI/2) + (i*2*Math.PI/n);
+      const x2 = cx + r*Math.cos(ang);
+      const y2 = cy + r*Math.sin(ang);
+
+      const line = document.createElementNS(svg.namespaceURI,"line");
+      line.setAttribute("x1", String(cx));
+      line.setAttribute("y1", String(cy));
+      line.setAttribute("x2", String(x2));
+      line.setAttribute("y2", String(y2));
+      line.setAttribute("stroke","rgba(0,0,0,0.10)");
+      svg.appendChild(line);
+
+      const t = document.createElementNS(svg.namespaceURI,"text");
+      const lx = cx + (r+16)*Math.cos(ang);
+      const ly = cy + (r+16)*Math.sin(ang);
+      t.setAttribute("x", String(lx));
+      t.setAttribute("y", String(ly));
+      t.setAttribute("fill","rgba(0,0,0,0.75)");
+      t.setAttribute("font-size","10");
+      t.setAttribute("font-weight","900");
+      t.setAttribute("text-anchor", (Math.cos(ang) > 0.2) ? "start" : (Math.cos(ang) < -0.2 ? "end" : "middle"));
+      t.setAttribute("dominant-baseline","middle");
+      t.textContent = radarData[i].short;
+      svg.appendChild(t);
+    }
+
+    // Data polygon
+    const pts = [];
+    for(let i=0;i<n;i++){
+      const ang = (-Math.PI/2) + (i*2*Math.PI/n);
+      const rr = r * (clamp(radarData[i].pct,0,100)/100);
+      pts.push([cx + rr*Math.cos(ang), cy + rr*Math.sin(ang)]);
+    }
+
+    const polyFill = document.createElementNS(svg.namespaceURI,"polygon");
+    polyFill.setAttribute("points", pts.map(p=>p[0].toFixed(2)+","+p[1].toFixed(2)).join(" "));
+    polyFill.setAttribute("fill","rgba(14,165,233,0.18)");
+    polyFill.setAttribute("stroke", COLORS.emerald);
+    polyFill.setAttribute("stroke-width","2");
+    svg.appendChild(polyFill);
+
+    for(let i=0;i<n;i++){
+      const c = document.createElementNS(svg.namespaceURI,"circle");
+      c.setAttribute("cx", pts[i][0]);
+      c.setAttribute("cy", pts[i][1]);
+      c.setAttribute("r","3");
+      c.setAttribute("fill", COLORS.sky);
+      svg.appendChild(c);
+    }
+
+    container.appendChild(svg);
+  }
+
+  // ---------- Rendering ----------
+  function rebuildFactors(){
+    const directHost = document.getElementById("directFactors");
+    const impactHost = document.getElementById("impactFactors");
+    directHost.innerHTML = "";
+    impactHost.innerHTML = "";
+    DIRECT_FACTORS.forEach(f=> directHost.appendChild(factorRow(f)));
+    IMPACT_FACTORS.forEach(f=> impactHost.appendChild(factorRow(f)));
+  }
+
+  function renderHistory(){
+    const host = document.getElementById("historyCard");
+    const count = state.saved.length;
+    host.innerHTML = `
+      <div style="display:flex;align-items:end;justify-content:space-between;gap:10px">
+        <div>
+          <div class="small">Historial</div>
+          <h3 style="margin-top:6px;font-size:16px;font-weight:950;margin-bottom:0">Proveedores guardados</h3>
+          <div style="margin-top:6px;color:var(--muted);font-size:14px">Guarda y compara rápidamente por total e Impacto ESS.</div>
+        </div>
+        <div class="small">${count} guardados</div>
+      </div>
+    `;
+
+    if (!count){
+      host.innerHTML += `
+        <div style="margin-top:14px;border-radius:18px;background:rgba(0,0,0,.02);padding:14px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);color:rgba(0,0,0,.70);font-size:14px">
+          Aún no has guardado proveedores. Puntúa y pulsa “Guardar proveedor”.
+        </div>
+      `;
+      return;
+    }
+
+    const list = document.createElement("div");
+    list.style.marginTop = "14px";
+    list.style.display = "grid";
+    list.style.gap = "10px";
+
+    const sorted = [...state.saved]
+      .sort((a,b)=> (b.total!==a.total ? b.total-a.total : (b.impactSubtotal||0)-(a.impactSubtotal||0)))
+      .slice(0,10);
+
+    sorted.forEach(e=>{
+      const item = document.createElement("div");
+      item.className = "historyItem";
+      item.innerHTML = `
+        <div style="min-width:0">
+          <div class="hname" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</div>
+          <div class="hmeta">
+            <span>Total: ${e.total}/100</span>
+            <span style="opacity:.60">·</span>
+            <span>Impacto: ${e.impactSubtotal}/30</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto">
+          <button class="primary hbtn" data-open="${e.id}">Abrir</button>
+          <button class="hbtn" data-del="${e.id}">Borrar</button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+
+    host.appendChild(list);
+
+    const note = document.createElement("div");
+    note.style.marginTop = "10px";
+    note.style.fontSize = "11px";
+    note.style.color = "rgba(0,0,0,.55)";
+    note.textContent = "Nota: el historial se guarda en tu navegador (localStorage).";
+    host.appendChild(note);
+
+    host.querySelectorAll("[data-open]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.getAttribute("data-open");
+        const entry = state.saved.find(x=>x.id===id);
+        if (entry){
+          state.providerName = entry.name;
+          state.scores = { ...entry.scores };
+          document.getElementById("providerName").value = state.providerName;
+          rebuildFactors();
+          render();
+          window.scrollTo({top:0, behavior:"smooth"});
+        }
+      });
+    });
+
+    host.querySelectorAll("[data-del]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.getAttribute("data-del");
+        state.saved = state.saved.filter(x=>x.id!==id);
+        persistSaved();
+        render();
+      });
+    });
+  }
+
+  function renderCompare(){
+    const host = document.getElementById("compareCard");
+    if (!state.compareOpen){ host.style.display = "none"; host.innerHTML=""; return; }
+    host.style.display = "block";
+
+    if (!state.saved || state.saved.length < 2){
+      host.innerHTML = `<div style="color:rgba(0,0,0,.70)">Necesitas al menos 2 proveedores guardados para comparar.</div>`;
+      return;
+    }
+
+    const ids = state.saved.map(e=>e.id);
+    if (!state.compareA) state.compareA = ids[0] || "";
+    if (!state.compareB) state.compareB = ids[1] || ids[0] || "";
+
+    const entryA = state.saved.find(e=>e.id===state.compareA);
+    const entryB = state.saved.find(e=>e.id===state.compareB);
+
+    host.innerHTML = `
+      <div class="row" style="align-items:end">
+        <div>
+          <div class="small">Comparación</div>
+          <h3 style="margin-top:6px;font-size:18px;font-weight:950;margin-bottom:0">Comparar proveedores</h3>
+          <div style="margin-top:6px;color:var(--muted);font-size:14px">Selecciona dos proveedores del historial para ver “Resultado” y “Visualización” lado a lado.</div>
+        </div>
+        <div class="actions" style="gap:8px;align-items:center">
+          <select id="selA">${state.saved.map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`).join("")}</select>
+          <select id="selB">${state.saved.map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`).join("")}</select>
+          <button id="btnCloseCompare">Cerrar</button>
+        </div>
+      </div>
+
+      <div class="compareGrid" style="margin-top:16px">
+        <div>
+          <div class="card" id="cmpARes"></div>
+          <div style="height:12px"></div>
+          <div class="card" id="cmpAViz"></div>
+        </div>
+        <div>
+          <div class="card" id="cmpBRes"></div>
+          <div style="height:12px"></div>
+          <div class="card" id="cmpBViz"></div>
+        </div>
+      </div>
+    `;
+
+    const selA = host.querySelector("#selA");
+    const selB = host.querySelector("#selB");
+    selA.value = state.compareA;
+    selB.value = state.compareB;
+
+    host.querySelector("#btnCloseCompare").addEventListener("click", ()=>{
+      state.compareOpen = false;
+      renderCompare();
+    });
+
+    selA.addEventListener("change", ()=>{ state.compareA = selA.value; renderCompare(); });
+    selB.addEventListener("change", ()=>{ state.compareB = selB.value; renderCompare(); });
+
+    if (!entryA || !entryB){
+      host.insertAdjacentHTML("beforeend", `<div style="margin-top:14px;border-radius:18px;background:rgba(0,0,0,.02);padding:14px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);color:rgba(0,0,0,.70)">Selecciona dos proveedores válidos.</div>`);
+      return;
+    }
+
+    const modelA = computeModel(entryA.scores, entryA.name);
+    const modelB = computeModel(entryB.scores, entryB.name);
+
+    document.getElementById("cmpARes").innerHTML = resultHTML(modelA);
+    document.getElementById("cmpBRes").innerHTML = resultHTML(modelB);
+
+    document.getElementById("cmpAViz").innerHTML = vizHTML(modelA, entryA.scores, "cmpAViz");
+    drawRadar(document.getElementById("cmpAViz-radar"), modelA.radarData);
+
+    document.getElementById("cmpBViz").innerHTML = vizHTML(modelB, entryB.scores, "cmpBViz");
+    drawRadar(document.getElementById("cmpBViz-radar"), modelB.radarData);
+  }
+
+  function render(){
+    const model = computeModel(state.scores, state.providerName);
+
+    document.getElementById("directSubtotal").textContent = model.directSubtotal + "/70";
+    document.getElementById("impactSubtotal").textContent = model.impactSubtotal + "/30";
+
+    document.getElementById("resultCard").innerHTML = resultHTML(model);
+
+    const tips = tipsHTML(model);
+    const tipsCard = document.getElementById("tipsCard");
+    if (!tips){ tipsCard.style.display = "none"; tipsCard.innerHTML = ""; }
+    else { tipsCard.style.display = "block"; tipsCard.innerHTML = tips; }
+
+    document.getElementById("vizCard").innerHTML = vizHTML(model, state.scores, "vizCard");
+    drawRadar(document.getElementById("vizCard-radar"), model.radarData);
+
+    renderHistory();
+    renderCompare();
+
+    const inp = document.getElementById("providerName");
+    if (inp && inp.value !== state.providerName) inp.value = state.providerName;
+  }
+
+  // ---------- Actions ----------
+  document.getElementById("providerName").addEventListener("input", (e)=>{
+    state.providerName = e.target.value;
+    render();
+  });
+
+  document.getElementById("btnReset").addEventListener("click", ()=>{
+    state.providerName = "";
+    state.scores = Object.fromEntries(ALL_FACTORS.map(f => [f.key, 0]));
+    document.getElementById("providerName").value = "";
+    rebuildFactors();
+    render();
+  });
+
+  document.getElementById("btnSave").addEventListener("click", ()=>{
+    const name = (state.providerName || "Proveedor sin nombre").trim() || "Proveedor sin nombre";
+    const model = computeModel(state.scores, name);
+    const entry = {
+      id: Date.now() + "_" + Math.random().toString(16).slice(2),
+      name,
+      createdAt: new Date().toISOString(),
+      scores: { ...state.scores },
+      directSubtotal: model.directSubtotal,
+      impactSubtotal: model.impactSubtotal,
+      total: model.total,
+    };
+    state.saved = [entry, ...state.saved].slice(0,50);
+    persistSaved();
+    render();
+  });
+
+  document.getElementById("btnCompare").addEventListener("click", ()=>{
+    if (!state.saved || state.saved.length < 2){
+      alert("Necesitas al menos 2 proveedores guardados para comparar.");
+      return;
+    }
+    const ids = state.saved.map(e=>e.id);
+    state.compareA = state.compareA || ids[0];
+    state.compareB = state.compareB || ids[1] || ids[0];
+    state.compareOpen = true;
+    renderCompare();
+    document.getElementById("compareCard").scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
+  document.getElementById("btnCopy").addEventListener("click", async ()=>{
+    const model = computeModel(state.scores, state.providerName.trim() || "Proveedor");
+    const text = buildShareText(model, state.scores);
+    try{
+      await navigator.clipboard.writeText(text);
+      alert("Resumen copiado al portapapeles.");
+    }catch{
+      prompt("Copia este texto:", text);
+    }
+  });
+
+  document.getElementById("btnPdf").addEventListener("click", async ()=>{
+    const node = document.getElementById("report");
+    const name = state.providerName.trim() || "proveedor";
+    const filename = "decision-consumo_" + sanitizeFilename(name) + ".pdf";
+
+    try{
+      const canvas = await html2canvas(node, { scale: Math.min(2, window.devicePixelRatio || 1.5), useCORS:true, backgroundColor:"#ffffff" });
+      const imgData = canvas.toDataURL("image/png");
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const usableWidth = pageWidth - margin*2;
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeight = (imgProps.height * usableWidth) / imgProps.width;
+
+      let remaining = imgHeight;
+      let position = 0;
+
+      while (remaining > 0){
+        pdf.addImage(imgData, "PNG", margin, margin - position, usableWidth, imgHeight);
+        remaining -= (pageHeight - margin*2);
+        position += (pageHeight - margin*2);
+        if (remaining > 0) pdf.addPage();
+      }
+
+      pdf.save(filename);
+    }catch(e){
+      console.error(e);
+      alert("No se pudo generar el PDF en este navegador.");
+    }
+  });
+
+  // ---------- Init ----------
+  rebuildFactors();
+  render();
+
+  // Re-render radar on resize (keeps responsive layout correct)
+  let rAF = null;
+  window.addEventListener("resize", ()=>{
+    if (rAF) cancelAnimationFrame(rAF);
+    rAF = requestAnimationFrame(()=>render());
+  });
+
+  // ---------- Basic self-tests (console) ----------
+  (function tests(){
+    console.assert(clamp(5,0,10)===5, "clamp keep");
+    console.assert(clamp(-1,0,10)===0, "clamp min");
+    console.assert(clamp(99,0,10)===10, "clamp max");
+    const allMax = Object.fromEntries(ALL_FACTORS.map(f=>[f.key, f.max]));
+    const m = computeModel(allMax, "Y");
+    console.assert(m.total===100, "all max total 100");
+    const txt = buildShareText(m, allMax);
+    console.assert(typeof txt === "string" && txt.length>0, "share text non-empty");
+    console.assert(txt.includes("\n"), "share text has newlines");
+    console.assert(txt.includes("TOTAL: 100/100"), "share includes total");
+  })();
+</script>
+</body>
+</html>
